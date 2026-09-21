@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # MySQL Database Service
+  mysql:
+    image: mysql:8.0
+    container_name: investment_swarm_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password_swarm
+      MYSQL_DATABASE: investment_swarm
+      MYSQL_USER: swarm_user
+      MYSQL_PASSWORD: swarm_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password_swarm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # Investment Research Swarm Web API & Frontend
+  web:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    container_name: investment_swarm_web
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - MYSQL_URL=mysql+pymysql://swarm_user:swarm_password@mysql:3306/investment_swarm
+      - APP_ENV=production
+      - DEBUG=false
+    env_file:
+      - ../.env
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
+    driver: local
